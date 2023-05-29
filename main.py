@@ -8,12 +8,13 @@ def start_loop():
     screen_handler = ScreenHandler(MainScreen())
 
     while running:
-        option = input("> ")
-
-        if option == 'exit':
-            running = False
-        else:
+        try:
+            option = input("> ")
             screen_handler.handle_option(option)
+
+        except KeyboardInterrupt:
+            print('Exiting...')
+            running = False
 
 
 if __name__ == '__main__':
