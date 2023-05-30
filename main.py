@@ -1,11 +1,11 @@
+from import_screen import ImportScreen
 from screen_handler import ScreenHandler
-from main_screen import MainScreen
 
 
 def start_loop():
     running = True
 
-    screen_handler = ScreenHandler(MainScreen())
+    screen_handler = ScreenHandler(ImportScreen())
 
     while running:
         try:
