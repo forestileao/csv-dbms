@@ -40,7 +40,7 @@ class ImportScreen(State):
         project_path = os.path.abspath(os.path.dirname(__file__))
 
         print(f'[!] importing tables {str(tables)}')
-        self.data_importer.import_tables(tables, os.path.join(project_path, 'pastel'))
+        self.data_importer.import_tables(tables, os.path.join(project_path, '../pastel'))
 
     def handle_option(self, option) -> None:
         stage_function = self.stages[self.current_stage]

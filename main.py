@@ -1,5 +1,7 @@
-from import_screen import ImportScreen
+from screens.import_screen import ImportScreen
 from screen_handler import ScreenHandler
+
+from dotenv import load_dotenv
 
 
 def start_loop():
@@ -18,4 +20,5 @@ def start_loop():
 
 
 if __name__ == '__main__':
+    load_dotenv()
     start_loop()

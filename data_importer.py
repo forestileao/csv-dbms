@@ -7,9 +7,11 @@ class DataImporter:
 
     def __init__(self):
         self.db_client = psycopg2.connect(
-            host="localhost",
-            user="postgres",
-            password="batata123")
+            user=os.getenv('POSTGRESQL_USER'),
+            password=os.getenv('POSTGRESQL_PASSWORD'),
+            host=os.getenv('POSTGRESQL_HOST'),
+            port=os.getenv('POSTGRESQL_PORT')
+        )
 
     def get_databases(self) -> list:
         cursor = self.db_client.cursor()
@@ -23,10 +25,12 @@ class DataImporter:
     def set_database(self, database: str) -> None:
         self.db_client.close()
         self.db_client = psycopg2.connect(
-            host="localhost",
-            user="postgres",
-            password="batata123",
-            dbname=database)
+            user=os.getenv('POSTGRESQL_USER'),
+            password=os.getenv('POSTGRESQL_PASSWORD'),
+            host=os.getenv('POSTGRESQL_HOST'),
+            port=os.getenv('POSTGRESQL_PORT'),
+            dbname=database
+        )
 
     def get_tables(self) -> list:
         cursor = self.db_client.cursor()
