@@ -1,0 +1,177 @@
+Aluno: Matheus Augusto Burda
+
+
+1. criar a base de dados acadêmica como sugerida pelo autor e incluir registros de exemplo.
+
+    Incluido com os arquivos disponibilizados no site do autor do livro
+
+
+2. listar os professores ordenando o resultado de forma decrescente pelo campo salário
+
+    select name, salary  from instructor i
+    order by -salary
+
+
+3. listar os professores com o orçamento do seu respectivo departamento
+
+    select name, d.dept_name, d.budget from instructor i
+    join department d
+    on (i.dept_name = d.dept_name)
+    order by d.budget
+
+
+4. listar a soma dos salários de cada departamento
+
+    select d.dept_name, sum(i.salary) from instructor i
+    join department d
+    on (i.dept_name = d.dept_name)
+    group by d.dept_name
+
+
+5. listar todos os nomes de estudantes que fazem pelo menos uma disciplina de computação, sem duplicados
+
+    select distinct s.name from student s
+    join takes t using (id)
+    join course c using (course_id)
+    where c.dept_name = 'Comp. Sci.'
+
+
+6. para cada departamento, encontrar o maior salário entre os professores
+
+    select dept_name, max(i.salary)  from department d
+    join instructor i
+    using (dept_name)
+    group by dept_name
+
+
+7. listar os ids e nomes dos estudantes que não fizeram nenhuma disciplina antes da primavera de 2009
+
+    select distinct id, name from student s
+    where id not in (
+	    select id from student s
+	    join takes t
+    	using (id)
+    	where t."year" < 2009 or (t."year" = 2009 and t."semester" = 'Winter')
+    )
+
+
+8. encontrar o menor salário, dos maiores por departamento da query anterior
+
+    select min(salary) from instructor
+    where salary in
+    (
+        select max(i.salary) from department d
+        join instructor i
+        using (dept_name)
+        group by dept_name
+    )
+
+
+9. mostrar uma lista de todos os professores, mostrando seu ID e o número de ofertas de disciplina que estão ministrando
+
+    select id, count(course_id)  from instructor i
+    join teaches t using (id)
+    group by (id)
+
+
+10. listar todas as ofertas de disciplinas no semestre Spring 2018, com o ID e nome do professor ministrando a disciplina
+
+    select s.course_id, i.id as instructor_id, i.name as instructor_name from "section" s
+    join teaches t using (course_id)
+    join instructor i using (id)
+    where s.semester = 'Spring' and s."year" = 2018
+
+
+11. listar todos os departamentos, com o número total de instrutores em cada um
+
+    select dept_name, count(i.id) from department d
+    join instructor i using (dept_name)
+    group by dept_name
+
+
+12. listar as disciplinas do departamento "Comp. Sci." que tem 3 créditos
+
+    select title, course_id  from course c
+    where dept_name = 'Comp. Sci.' and credits = 3
+
+
+13. listar os IDs de todos os estudantes que tiveram aulas com o Prof. Einstein
+
+    select s.id from student s
+    join takes t using (id)
+    join teaches t2 on (t.course_id = t2.course_id)
+    join instructor i on (i.id = t2.id)
+    where i."name" = 'Einstein'
+
+
+14. encontrar o salário mais alto de um professor
+
+    select max(salary) from instructor
+
+
+15. listar todos os professores ganhando o maior salario
+
+    select name from instructor i
+    where salary in (
+        select max(salary) from instructor
+    )
+
+
+16. aumentar os salários dos professores de Comp. Sci. em 10%
+
+    update instructor
+    set salary = salary * 1.10
+    where dept_name = 'Comp. Sci.'
+
+
+17. apagar todas as disciplinas que nunca foram ofertadas (que não constam na tabela de section)
+
+    delete from course
+    where course_id not in (
+        select course_id from course
+        join "section" using (course_id)
+    )
+
+
+18. incluir mais 5 estudantes na tabela apropriada
+
+    insert into student values ('77777', 'Burda', 'Comp. Sci.', '0');
+    insert into student values ('88888', 'Willig', 'Comp. Sci.', '0');
+    insert into student values ('99999', 'Foresti', 'Comp. Sci.', '0');
+    insert into student values ('10101', 'Luis', 'Comp. Sci.', '0');
+    insert into student values ('11111', 'Francisco', 'Comp. Sci.', '0');
+
+
+19. incluir uma disciplina em Comp. Sci.
+
+    insert into course values ('CS-888', 'Machine Learning', 'Comp. Sci.', '6');
+
+
+20. criar uma oferta de disciplina para a disciplina da questão anterior
+
+    insert into section values ('CS-888', '1', 'Summer', '2007', 'Taylor', '3128', 'D');
+
+
+21. matricular 10 alunos na oferta de disciplina da questão anterior
+
+    insert into takes values ('10101', 'CS-888', '1', 'Summer', '2007', null);
+    insert into takes values ('54321', 'CS-888', '1', 'Summer', '2007', null);
+    insert into takes values ('76543', 'CS-888', '1', 'Summer', '2007', null);
+    insert into takes values ('11111', 'CS-888', '1', 'Summer', '2007', null);
+    insert into takes values ('77777', 'CS-888', '1', 'Summer', '2007', null);
+    insert into takes values ('88888', 'CS-888', '1', 'Summer', '2007', null);
+    insert into takes values ('99999', 'CS-888', '1', 'Summer', '2007', null);
+    insert into takes values ('00128', 'CS-888', '1', 'Summer', '2007', null);
+    insert into takes values ('76653', 'CS-888', '1', 'Summer', '2007', null);
+    insert into takes values ('98765', 'CS-888', '1', 'Summer', '2007', null);
+
+
+22. listar os departamentos que contém a string "sci", independente de caracteres maiúsculos ou minúsculos
+
+    select dept_name from department d
+    where lower(dept_name) like '%sci%'
+
+
+
+
+Cria o driver manager para criar a conexao com o banco. Um objeto de statement é criado para poder acessar os dados no banco, a partir de uma query,
