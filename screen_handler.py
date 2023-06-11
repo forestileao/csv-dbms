@@ -13,8 +13,7 @@ class ScreenHandler:
         self.transition_to(state)
 
     def transition_to(self, state: State):
-
-        print(f"Context: Transition to {type(state).__name__}")
+        # print(f"Context: Transition to {type(state).__name__}")
         self._state = state
         self._state.context = self
 

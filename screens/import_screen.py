@@ -9,7 +9,7 @@ class ImportScreen(State):
     def __init__(self):
         super()
         self.data_importer = DataImporter()
-        print('[!] Choose a database to import:')
+        print('[!] Choose a database to import (write down):')
         self.print_databases()
         self.current_stage = 'select_db'
 
@@ -45,6 +45,4 @@ class ImportScreen(State):
     def handle_option(self, option) -> None:
         stage_function = self.stages[self.current_stage]
         stage_function(option)
-
-
 

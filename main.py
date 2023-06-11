@@ -1,4 +1,5 @@
 from screens.import_screen import ImportScreen
+from screens.main_screen import MainScreen
 from screen_handler import ScreenHandler
 
 from dotenv import load_dotenv
@@ -7,7 +8,7 @@ from dotenv import load_dotenv
 def start_loop():
     running = True
 
-    screen_handler = ScreenHandler(ImportScreen())
+    screen_handler = ScreenHandler(MainScreen())
 
     while running:
         try:
