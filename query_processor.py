@@ -1,7 +1,7 @@
 class QueryProcessor:
-
     reserved_keywords = ["select", "from", "join", "where", "order", "by", "on", "using", "create", "insert"]
     comparison_operands = ["=", "<", ">", "<=", ">=", "<>"]
+
     def __init__(self):
         pass
 
@@ -44,7 +44,6 @@ class QueryProcessor:
         except Exception as e:
             print(f"Exception while processing query:\n{original_query}\n{e}")
 
-
     def get_tables(self, tokens):
         tables = []
 
@@ -73,7 +72,7 @@ class QueryProcessor:
                     break
 
                 if tokens[i] in self.comparison_operands:  # Evaluating the variable
-                    variables.append(tokens[i-1])
+                    variables.append(tokens[i - 1])
 
                 filters.append(tokens[i])
 
@@ -97,7 +96,6 @@ class QueryProcessor:
         else:
             return None
 
-
     def select_columns(self, tokens):
         columns = []
 
@@ -110,6 +108,90 @@ class QueryProcessor:
                 index += 1
 
         return columns
+
+    @staticmethod
+    def select(data: dict, fields: list):
+        result = []
+
+        for row in data:
+            selected_row = {}
+
+            for field in fields:
+                if field in row:
+                    selected_row[field] = row[field]
+
+            result.append(selected_row)
+            return result
+
+    @staticmethod
+    def order_by(data: list, field: str):
+        reverse = False
+        if field.startswith('-'):
+            field = field[1:]
+            reverse = True
+
+        return sorted(data, key=lambda x: x[field], reverse=reverse)
+
+    def apply_filters(self, data: list, filters: list):
+        is_valid = lambda row: True
+
+        and_predicates = self.split_list(data, 'and')
+
+        for field, operator, value in and_predicates:
+            value = int(value) if value.isNumeric() else value.replace("'", "")
+            if operator == '=':
+                is_valid = lambda row: row[field] == value and is_valid(row)
+            elif operator == '!=':
+                is_valid = lambda row: row[field] != value and is_valid(row)
+            elif operator == '>=':
+                is_valid = lambda row: row[field] >= value and is_valid(row)
+            elif operator == '<=':
+                is_valid = lambda row: row[field] <= value and is_valid(row)
+            elif operator == '>':
+                is_valid = lambda row: row[field] > value and is_valid(row)
+            elif operator == '<':
+                is_valid = lambda row: row[field] < value and is_valid(row)
+
+        or_predicates = self.split_list(data, 'or')
+
+        for field, operator, value in or_predicates:
+            value = int(value) if value.isNumeric() else value.replace("'", "")
+            if operator == '=':
+                is_valid = lambda row: row[field] == value or is_valid(row)
+            elif operator == '!=':
+                is_valid = lambda row: row[field] != value or is_valid(row)
+            elif operator == '>=':
+                is_valid = lambda row: row[field] >= value or is_valid(row)
+            elif operator == '<=':
+                is_valid = lambda row: row[field] <= value or is_valid(row)
+            elif operator == '>':
+                is_valid = lambda row: row[field] > value or is_valid(row)
+            elif operator == '<':
+                is_valid = lambda row: row[field] < value or is_valid(row)
+
+        filtered = []
+        for row in data:
+            if is_valid(row):
+                filtered.append(row)
+
+        return filtered
+
+    def split_list(self, lst, value):
+        result = []
+        sublist = []
+
+        for item in lst:
+            if item == value:
+                if sublist:
+                    result.append(sublist)
+                    sublist = []
+            else:
+                sublist.append(item)
+
+        if sublist:
+            result.append(sublist)
+
+        return result
 
 
 if __name__ == "__main__":
