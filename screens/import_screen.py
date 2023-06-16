@@ -37,10 +37,19 @@ class ImportScreen(State):
 
     def handle_import_tables(self, tables_str: str):
         tables = list(map(lambda x: x.strip(), tables_str.split(',')))
-        project_path = os.path.abspath(os.path.dirname(__file__))
+        project_path = os.path.join(
+            os.path.abspath(os.path.dirname(__file__)),
+            '..', 'imported')
+        project_path = os.path.abspath(project_path)
+
+        print('[!] Set a path to save the imported data.')
+        path = str(input(f'(default={project_path}): ')).strip()
+
+        if path == '':
+            path = project_path
 
         print(f'[!] importing tables {str(tables)}')
-        self.data_importer.import_tables(tables, os.path.join(project_path, '../pastel'))
+        self.data_importer.import_tables(tables, path)
 
     def handle_option(self, option) -> None:
         stage_function = self.stages[self.current_stage]

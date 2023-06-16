@@ -1,17 +1,38 @@
+import os
+import csv
+
+
 class QueryProcessor:
     reserved_keywords = ["select", "from", "join", "where", "order", "by", "on", "using", "create", "insert"]
     comparison_operands = ["=", "<", ">", "<=", ">=", "<>"]
 
     def __init__(self):
-        pass
+        self.database = ''
+
+        project_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'imported')
+        project_path = os.path.abspath(project_path)
+
+        print('[!] Set a path to load the imported data.')
+        self.path = str(input(f'(default={project_path}): ')).strip()
+
+        if self.path == '':
+            self.path = project_path
 
     def process(self, query):
+        query = query.lower().strip()
 
+        if query.startswith('use'):
+            _, database = query.split(' ')
+            self.database = database
+            self.path = os.path.join(self.path, self.database)
+        elif self.database != '':
+            self.parse_query(query)
+        else:
+            print('[!] Select a database! (use database_name)')
+
+    def parse_query(self, query):
         original_query = query
         query_params = []
-
-        query = query.lower()
-
         param_start = query.find("'")
         while (param_start != -1):
             param_end = param_start + query[param_start + 1:].find("'") + 1
@@ -41,6 +62,8 @@ class QueryProcessor:
             columns = self.select_columns(tokens)
             print(f"select {columns}")
 
+            #print(self.load_tables(tables))
+
         except Exception as e:
             print(f"Exception while processing query:\n{original_query}\n{e}")
 
@@ -53,9 +76,13 @@ class QueryProcessor:
                 # Checks if the name of the table exists, and it's not a reserved keyword
                 if i + 1 >= len(tokens) or tokens[i + 1] in self.reserved_keywords:
                     raise Exception("Error on SQL syntax")
-                    return []
 
-                tables.append(tokens[i + 1])
+                if tokens[i] == 'join':
+                    joining_table = tokens[i + 1]
+                    using_param = tokens[i + 2].replace('using(', '').replace(')', '')
+                    tables.append((joining_table, using_param))
+                else:
+                    tables.append(tokens[i + 1])
 
         return tables
 
@@ -109,6 +136,38 @@ class QueryProcessor:
 
         return columns
 
+    def load_tables(self, tables):
+        result = []
+        for table in tables:
+            if isinstance(table, str):
+                table_path = os.path.join(self.path, table + '.csv')
+                table_data = self.load_csv_as_dict(table_path)
+
+                if len(result) == 0:
+                    result = table_data
+                elif len(table_data) != 0:
+                    result = [{**d1, **d2} for d1 in result for d2 in table_data]
+            elif isinstance(table, tuple) and len(table) == 2:
+                table_name, join_column = table
+                table_path = os.path.join(self.path, table_name + '.csv')
+                table_data = self.load_csv_as_dict(table_path)
+
+                result = [{**d1, **d2} for d1 in result for d2 in table_data if d1.get(join_column) == d2.get(join_column)]
+
+        return result
+
+
+    def load_csv_as_dict(self, path):
+        result = []
+
+        with open(path, 'r', newline='') as file:
+            reader = csv.DictReader(file)
+
+            for row in reader:
+                result.append(dict(row))
+
+        return result
+
     @staticmethod
     def select(data: dict, fields: list):
         result = []
@@ -135,7 +194,7 @@ class QueryProcessor:
     def apply_filters(self, data: list, filters: list):
         is_valid = lambda row: True
 
-        and_predicates = self.split_list(data, 'and')
+        and_predicates = self.split_list(filters, 'and')
 
         for field, operator, value in and_predicates:
             value = int(value) if value.isNumeric() else value.replace("'", "")
@@ -152,7 +211,7 @@ class QueryProcessor:
             elif operator == '<':
                 is_valid = lambda row: row[field] < value and is_valid(row)
 
-        or_predicates = self.split_list(data, 'or')
+        or_predicates = self.split_list(filters, 'or')
 
         for field, operator, value in or_predicates:
             value = int(value) if value.isNumeric() else value.replace("'", "")
@@ -195,9 +254,10 @@ class QueryProcessor:
 
 
 if __name__ == "__main__":
-    query = "select a, b, c from pedro p join teste t using id join pinhao using id where name = 'matheus burda' and id >= 8 order by '-id'"
-
+    query = "select a, b, c from pedro join teste using(id) join pinhao using(id) where name = 'matheus burda' and id >= 8 order by '-id'"
+    query = "select course_id, title, dept_name from course join section using(course_id)"
     print(query)
 
     aa = QueryProcessor()
+    aa.process('use dbbook')
     aa.process(query=query)

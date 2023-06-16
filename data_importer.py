@@ -12,6 +12,7 @@ class DataImporter:
             host=os.getenv('POSTGRESQL_HOST'),
             port=os.getenv('POSTGRESQL_PORT')
         )
+        self.database = ''
 
     def get_databases(self) -> list:
         cursor = self.db_client.cursor()
@@ -24,6 +25,7 @@ class DataImporter:
 
     def set_database(self, database: str) -> None:
         self.db_client.close()
+        self.database = database
         self.db_client = psycopg2.connect(
             user=os.getenv('POSTGRESQL_USER'),
             password=os.getenv('POSTGRESQL_PASSWORD'),
@@ -41,7 +43,8 @@ class DataImporter:
 
         return table_list
 
-    def import_table(self, table: str, output_dir: str) -> None:
+    def import_table(self, table: str, output_dir: str, database: str) -> None:
+        output_dir = os.path.join(output_dir, database)
         os.makedirs(output_dir, exist_ok=True)
 
         cursor = self.db_client.cursor()
@@ -58,7 +61,7 @@ class DataImporter:
         
     def import_tables(self, tables: list, output_dir: str) -> None:
         for table in tables:
-            self.import_table(table, output_dir)
+            self.import_table(table, output_dir, self.database)
 
     @staticmethod
     def save_tuples_to_csv(output_path, tuples_list):

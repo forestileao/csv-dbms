@@ -34,6 +34,7 @@ class MainScreen(State):
 
     def handle_query(self) -> None:
         print("Handle query")
+        # self.context.transition_to(QueryScreen())
 
     def exit(self):
         quit(code=0)
