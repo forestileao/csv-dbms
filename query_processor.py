@@ -1,5 +1,6 @@
 import os
 import csv
+import sys
 
 
 class QueryProcessor:
@@ -19,7 +20,7 @@ class QueryProcessor:
             self.path = project_path
 
     def process(self, query):
-        query = query.lower().strip()
+        query = query.strip()
 
         if query.startswith('use'):
             _, database = query.split(' ')
@@ -41,7 +42,7 @@ class QueryProcessor:
             query = query.replace(f"'{parameter}'", '?')
             param_start = query.find("'")
 
-        tokens = query.split(' ')
+        tokens = query.lower().split(' ')
         tokens = list(filter(lambda item: item != '', tokens))
 
         for i in range(len(tokens)):
@@ -62,7 +63,10 @@ class QueryProcessor:
             columns = self.select_columns(tokens)
             print(f"select {columns}")
 
-            #print(self.load_tables(tables))
+            loaded_dada = self.load_tables(tables)
+            loaded_dada = self.apply_filters(loaded_dada, filters)
+            loaded_dada = self.select(loaded_dada, columns)
+            self.print_csv_from_dict_list(loaded_dada)
 
         except Exception as e:
             print(f"Exception while processing query:\n{original_query}\n{e}")
@@ -129,6 +133,9 @@ class QueryProcessor:
         if "select" in tokens:
             index = tokens.index("select") + 1
 
+            if tokens[index] == '*':
+                return None
+
             while tokens[index] != "from":
                 field = tokens[index].replace(',', '')
                 columns.append(field)
@@ -156,7 +163,6 @@ class QueryProcessor:
 
         return result
 
-
     def load_csv_as_dict(self, path):
         result = []
 
@@ -168,8 +174,20 @@ class QueryProcessor:
 
         return result
 
+    def print_csv_from_dict_list(self, dict_list):
+        keys = dict_list[0].keys()
+
+        csv_writer = csv.DictWriter(sys.stdout, fieldnames=keys)
+        csv_writer.writeheader()
+
+        for dictionary in dict_list:
+            csv_writer.writerow(dictionary)
+
     @staticmethod
     def select(data: dict, fields: list):
+        if fields is None:
+            return data
+
         result = []
 
         for row in data:
@@ -192,45 +210,84 @@ class QueryProcessor:
         return sorted(data, key=lambda x: x[field], reverse=reverse)
 
     def apply_filters(self, data: list, filters: list):
-        is_valid = lambda row: True
 
-        and_predicates = self.split_list(filters, 'and')
+        unique_filter = len(filters) == 3
+        contains_and = 'and' in filters
+        and_predicates = self.split_list(filters, 'and') if contains_and or unique_filter else []
+        def is_and_valid(row):
+            and_valid = True
+            for field, operator, value in and_predicates:
+                value = int(value) if value.isnumeric() else value.replace("'", "")
+                row[field] = int(row[field]) if row[field].isnumeric() else row[field]
+                if operator == '=':
+                    if row[field] != value:
+                        and_valid = False
+                        break
+                elif operator == '!=':
+                    if row[field] == value:
+                        and_valid = False
+                        break
+                elif operator == '>=':
+                    if row[field] < value:
+                        and_valid = False
+                        break
+                elif operator == '<=':
+                    if row[field] > value:
+                        and_valid = False
+                        break
+                elif operator == '>':
+                    if row[field] <= value:
+                        and_valid = False
+                        break
+                elif operator == '<':
+                    if row[field] >= value:
+                        and_valid = False
+                        break
+            if and_valid:
+                return True
+            return False
 
-        for field, operator, value in and_predicates:
-            value = int(value) if value.isNumeric() else value.replace("'", "")
-            if operator == '=':
-                is_valid = lambda row: row[field] == value and is_valid(row)
-            elif operator == '!=':
-                is_valid = lambda row: row[field] != value and is_valid(row)
-            elif operator == '>=':
-                is_valid = lambda row: row[field] >= value and is_valid(row)
-            elif operator == '<=':
-                is_valid = lambda row: row[field] <= value and is_valid(row)
-            elif operator == '>':
-                is_valid = lambda row: row[field] > value and is_valid(row)
-            elif operator == '<':
-                is_valid = lambda row: row[field] < value and is_valid(row)
+        contains_or = 'or' in filters
+        or_predicates = self.split_list(filters, 'or') if contains_or else []
 
-        or_predicates = self.split_list(filters, 'or')
-
-        for field, operator, value in or_predicates:
-            value = int(value) if value.isNumeric() else value.replace("'", "")
-            if operator == '=':
-                is_valid = lambda row: row[field] == value or is_valid(row)
-            elif operator == '!=':
-                is_valid = lambda row: row[field] != value or is_valid(row)
-            elif operator == '>=':
-                is_valid = lambda row: row[field] >= value or is_valid(row)
-            elif operator == '<=':
-                is_valid = lambda row: row[field] <= value or is_valid(row)
-            elif operator == '>':
-                is_valid = lambda row: row[field] > value or is_valid(row)
-            elif operator == '<':
-                is_valid = lambda row: row[field] < value or is_valid(row)
+        def is_or_valid(row):
+            or_valid = False
+            for field, operator, value in or_predicates:
+                value = int(value) if value.isnumeric() else value.replace("'", "")
+                row[field] = int(row[field]) if row[field].isnumeric() else row[field]
+                if operator == '=':
+                    if row[field] == value:
+                        or_valid = True
+                        break
+                elif operator == '!=':
+                    if row[field] != value:
+                        or_valid = True
+                        break
+                elif operator == '>=':
+                    if row[field] >= value:
+                        or_valid = True
+                        break
+                elif operator == '<=':
+                    if row[field] <= value:
+                        or_valid = True
+                        break
+                elif operator == '>':
+                    if row[field] > value:
+                        or_valid = True
+                        break
+                elif operator == '<':
+                    if row[field] < value:
+                        or_valid = True
+                        break
+            if or_valid:
+                return True
+            return False
 
         filtered = []
         for row in data:
-            if is_valid(row):
+            if (contains_and or unique_filter) and is_and_valid(row):
+                filtered.append(row)
+            elif contains_or and is_or_valid(row):
                 filtered.append(row)
 
         return filtered
@@ -254,8 +311,7 @@ class QueryProcessor:
 
 
 if __name__ == "__main__":
-    query = "select a, b, c from pedro join teste using(id) join pinhao using(id) where name = 'matheus burda' and id >= 8 order by '-id'"
-    query = "select course_id, title, dept_name from course join section using(course_id)"
+    query = "select course_id, title, dept_name from course join section using(course_id) where course_id = 'BIO-101' and credits >= 4"
     print(query)
 
     aa = QueryProcessor()
