@@ -1,5 +1,6 @@
 from screen_handler import State
 from screens.import_screen import ImportScreen
+from screens.query_screen import QueryScreen
 
 class MainScreen(State):
     def __init__(self):
@@ -34,7 +35,7 @@ class MainScreen(State):
 
     def handle_query(self) -> None:
         print("Handle query")
-        # self.context.transition_to(QueryScreen())
+        self.context.transition_to(QueryScreen())
 
     def exit(self):
         quit(code=0)

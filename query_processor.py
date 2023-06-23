@@ -11,13 +11,14 @@ class QueryProcessor:
         self.database = ''
 
         project_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'imported')
-        project_path = os.path.abspath(project_path)
+        self.project_path = os.path.abspath(project_path)
 
         print('[!] Set a path to load the imported data.')
-        self.path = str(input(f'(default={project_path}): ')).strip()
+        self.project_path = str(input(f'(default={project_path}): ')).strip()
 
-        if self.path == '':
-            self.path = project_path
+        if self.project_path == '':
+            self.project_path = project_path
+        self.path = ''
 
     def process(self, query):
         query = query.strip()
@@ -25,7 +26,7 @@ class QueryProcessor:
         if query.startswith('use'):
             _, database = query.split(' ')
             self.database = database
-            self.path = os.path.join(self.path, self.database)
+            self.path = os.path.join(self.project_path, self.database)
         elif self.database != '':
             self.parse_query(query)
         else:
@@ -52,21 +53,25 @@ class QueryProcessor:
 
         try:
             tables = self.get_tables(tokens)
-            print(f"Joining tables {tables}")
-
             ordination = self.ordination(tokens)
-            print(f"Order by {ordination}")
-
             filters = self.get_filters(tokens)
-            print(f"Filtering by {filters}")
-
             columns = self.select_columns(tokens)
-            print(f"select {columns}")
 
             loaded_dada = self.load_tables(tables)
-            loaded_dada = self.apply_filters(loaded_dada, filters)
-            loaded_dada = self.select(loaded_dada, columns)
-            self.print_csv_from_dict_list(loaded_dada)
+
+            if filters is not None:
+                loaded_dada = self.apply_filters(loaded_dada, filters)
+
+            if columns is not None:
+                loaded_dada = self.select(loaded_dada, columns)
+
+            if ordination is not None:
+                loaded_dada = self.order_by(loaded_dada, ordination)
+
+            if len(loaded_dada) != 0:
+                self.print_csv_from_dict_list(loaded_dada)
+            else:
+                print('No data!')
 
         except Exception as e:
             print(f"Exception while processing query:\n{original_query}\n{e}")
@@ -107,13 +112,8 @@ class QueryProcessor:
 
                 filters.append(tokens[i])
 
-        variables = ['x.' + x for x in variables]
-
-        filter_str = ' '.join(filters)
-
-        print(filter_str)
-
-        lamb_func = lambda x: eval(filter_str)
+        if len(filters) == 0:
+            return None
 
         return filters
 
@@ -184,7 +184,7 @@ class QueryProcessor:
             csv_writer.writerow(dictionary)
 
     @staticmethod
-    def select(data: dict, fields: list):
+    def select(data: list[dict], fields: list):
         if fields is None:
             return data
 
@@ -198,7 +198,8 @@ class QueryProcessor:
                     selected_row[field] = row[field]
 
             result.append(selected_row)
-            return result
+
+        return result
 
     @staticmethod
     def order_by(data: list, field: str):
