@@ -11,7 +11,6 @@ class MainScreen(State):
             'run': self.handle_query,
             'exit': self.exit,
         }
-        self.print_options()
 
     def handle_option(self, option) -> None:
 

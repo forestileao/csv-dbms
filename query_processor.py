@@ -21,16 +21,23 @@ class QueryProcessor:
         self.path = ''
 
     def process(self, query):
-        query = query.strip()
 
-        if query.startswith('use'):
-            _, database = query.split(' ')
-            self.database = database
-            self.path = os.path.join(self.project_path, self.database)
-        elif self.database != '':
-            self.parse_query(query)
-        else:
-            print('[!] Select a database! (use database_name)')
+        queries = query.split(';')
+
+        for query in queries:
+
+            query = query.strip()
+
+            if len(query) != 0:
+
+                if query.startswith('use'):
+                    _, database = query.split(' ')
+                    self.database = database
+                    self.path = os.path.join(self.project_path, self.database)
+                elif self.database != '':
+                    self.parse_query(query)
+                else:
+                    print('[!] First, select a database! (use DATABASE_NAME)')
 
     def parse_query(self, query):
         original_query = query

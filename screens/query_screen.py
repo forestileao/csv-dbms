@@ -11,3 +11,5 @@ class QueryScreen(State):
     def handle_option(self, option) -> None:
         self.query_processor.process(option)
 
+    def print_options(self):
+        pass

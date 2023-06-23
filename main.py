@@ -12,6 +12,7 @@ def start_loop():
 
     while running:
         try:
+            screen_handler.print_options()
             option = input("> ")
             screen_handler.handle_option(option)
 
