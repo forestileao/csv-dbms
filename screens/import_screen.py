@@ -82,7 +82,7 @@ class ImportScreen(State):
                 print(f'\t[*] {db}')
 
         elif self.current_stage == "import_tables":
-            print(f'[!] Select tables to import (separated by commas) or "*" to import all):')
+            print(f'[!] Select tables to import (separated by commas) or just press ENTER to import all):')
 
             if len(self.tables) == 0:
                 print("\t0 Tables found...")

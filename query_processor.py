@@ -40,6 +40,66 @@ class QueryProcessor:
 
     def parse_query(self, query):
         original_query = query
+
+        if 'insert into' in query:
+            tokens = self.get_insert_tokens(query)
+            operation_type = 'insert'
+        else :
+            tokens = self.get_query_tokens(query)
+            operation_type = 'query'
+
+        try:
+            if operation_type == 'insert':
+                self.handle_insert(tokens)
+            elif operation_type == 'query':
+                self.handle_query(tokens)
+
+        except Exception as e:
+            print(f"Exception while processing query:\n{original_query}\n{e}")
+
+
+    def handle_query(self, query_tokens):
+        tables = self.get_tables(query_tokens)
+        ordination = self.ordination(query_tokens)
+        filters = self.get_filters(query_tokens)
+        columns = self.select_columns(query_tokens)
+
+        loaded_dada = self.load_tables(tables)
+
+        if filters is not None:
+            loaded_dada = self.apply_filters(loaded_dada, filters)
+
+        if ordination is not None:
+            loaded_dada = self.order_by(loaded_dada, ordination)
+
+        if columns is not None:
+            loaded_dada = self.select(loaded_dada, columns)
+
+        if len(loaded_dada) != 0:
+            self.print_csv_from_dict_list(loaded_dada)
+        else:
+            print('No data!')
+
+    def get_insert_tokens(self, query: str):
+        query = query.replace('insert into ', '')
+        table_data, values = query.split('values')
+        table = table_data.strip()
+        values_array = values.strip().split('),')
+
+        new_rows = []
+        for row in values_array:
+            row_values = row.replace("'", "").replace('(', '').replace(')', '').split(',')
+
+            adding_row = []
+            for row_value in row_values:
+                adding_row.append(row_value.strip())
+
+            new_rows.append(','.join(adding_row))
+
+        rows_string = '\n'.join(new_rows) + '\n'
+        return table, rows_string
+
+    def get_query_tokens(self, query):
         query_params = []
         param_start = query.find("'")
         while (param_start != -1):
@@ -57,30 +117,7 @@ class QueryProcessor:
                 tokens[i] = "\'" + query_params[0] + "\'"
                 query_params.pop(0)
 
-        try:
-            tables = self.get_tables(tokens)
-            ordination = self.ordination(tokens)
-            filters = self.get_filters(tokens)
-            columns = self.select_columns(tokens)
-
-            loaded_dada = self.load_tables(tables)
-
-            if filters is not None:
-                loaded_dada = self.apply_filters(loaded_dada, filters)
-
-            if columns is not None:
-                loaded_dada = self.select(loaded_dada, columns)
-
-            if ordination is not None:
-                loaded_dada = self.order_by(loaded_dada, ordination)
-
-            if len(loaded_dada) != 0:
-                self.print_csv_from_dict_list(loaded_dada)
-            else:
-                print('No data!')
-
-        except Exception as e:
-            print(f"Exception while processing query:\n{original_query}\n{e}")
+        return tokens
 
     def get_tables(self, tokens):
         tables = []
@@ -206,6 +243,15 @@ class QueryProcessor:
 
         return result
 
+    def handle_insert(self, tokens):
+        table, values_str = tokens
+
+        inserting_path = os.path.join(self.path, table + '.csv')
+        with open(inserting_path, "a") as f:
+            f.write(values_str)
+
+            print('Insert finished with success!')
+
     def load_csv_as_dict(self, path):
         result = []
 
@@ -251,7 +297,7 @@ class QueryProcessor:
             field = field[1:]
             reverse = True
 
-        return sorted(data, key=lambda x: x[field], reverse=reverse)
+        return sorted(data, key=lambda x: float(x[field]) if x[field].isnumeric() else x[field], reverse=reverse)
 
     def apply_filters(self, data: list, filters: list):
 
