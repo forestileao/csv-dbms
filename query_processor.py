@@ -27,9 +27,7 @@ class QueryProcessor:
         for query in queries:
 
             query = query.strip()
-
             if len(query) != 0:
-
                 if query.startswith('use'):
                     _, database = query.split(' ')
                     self.database = database
@@ -38,6 +36,7 @@ class QueryProcessor:
                     self.parse_query(query)
                 else:
                     print('[!] First, select a database! (use DATABASE_NAME)')
+                    return
 
     def parse_query(self, query):
         original_query = query

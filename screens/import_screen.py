@@ -18,7 +18,7 @@ class ImportScreen(State):
         }
 
     def handle_select_db_type(self, database_type: str):
-        if  database_type not in ["postgres", "mysql", "csv"]:
+        if database_type not in ["postgres", "mysql", "csv"]:
             raise ("Invalid option setting database_type")
             self.context.return_last_state()
 
@@ -26,6 +26,10 @@ class ImportScreen(State):
         self.current_stage = 'select_db'
 
     def handle_select_db(self, database: str):
+        if database not in self.data_importer.get_databases():
+            print("Database does not exist. Aborting.")
+            return
+
         self.data_importer.set_database(database)
         self.tables = self.data_importer.get_tables()
 
@@ -34,6 +38,13 @@ class ImportScreen(State):
     def handle_import_tables(self, tables_str: str):
 
         tables = list(map(lambda x: x.strip(), tables_str.split(','))) if tables_str != "" else self.data_importer.get_tables()
+
+        print(list(set(tables) & set(self.data_importer.get_tables())))
+
+        # Check if there is a intersection between tables inserted and the ones on database
+        if tables_str != "*" and len(list(set(tables) & set(self.data_importer.get_tables()))) <= 0:
+            print("Table does not exist. Aborting.")
+            return
 
         project_path = os.path.join(
             os.path.abspath(os.path.dirname(__file__)),
@@ -64,14 +75,14 @@ class ImportScreen(State):
             print(f'\t[*] csv')
 
         elif self.current_stage == "select_db":
-            print('[!] Choose a database to import (write down):')
+            print('[!] Choose a database to import from (write down):')
             databases = self.data_importer.get_databases()
 
             for db in databases:
                 print(f'\t[*] {db}')
 
         elif self.current_stage == "import_tables":
-            print(f'[!] Select tables to import (separated by commas - default: all):')
+            print(f'[!] Select tables to import (separated by commas) or "*" to import all):')
 
             if len(self.tables) == 0:
                 print("\t0 Tables found...")
