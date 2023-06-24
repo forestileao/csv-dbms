@@ -94,8 +94,37 @@ class QueryProcessor:
 
                 if tokens[i] == 'join':
                     joining_table = tokens[i + 1]
-                    using_param = tokens[i + 2].replace('using(', '').replace(')', '')
-                    tables.append((joining_table, using_param))
+
+                    if "using" in tokens[i+2]:
+                        using_param = tokens[i + 2].replace('using(', '').replace(')', '')
+                        tables.append((joining_table, using_param))
+
+                    elif "on" in tokens[i + 2]:
+                        curr_index = i+2
+                        complete_expression = ""
+
+                        while "=" not in tokens[curr_index]:
+                            complete_expression += tokens[curr_index]
+                            curr_index += 1
+
+                        complete_expression += tokens[curr_index]
+
+                        if complete_expression[-1] == "=":
+                            curr_index += 1
+                            complete_expression += tokens[curr_index]
+
+                        if complete_expression[0:2] == "on":
+                            complete_expression = complete_expression[2:]
+
+                        args1, args2 = complete_expression.replace(')', '').replace('(',  '').split('=')
+
+                        table1, column1 = args1.split('.')
+                        table2, column2 = args2.split('.')
+                        tables.append((table1, column1, table2, column2))
+
+                    else:
+                        raise Exception("Error on SQL syntax")
+
                 else:
                     tables.append(tokens[i + 1])
 
@@ -160,12 +189,20 @@ class QueryProcessor:
                     result = table_data
                 elif len(table_data) != 0:
                     result = [{**d1, **d2} for d1 in result for d2 in table_data]
+
             elif isinstance(table, tuple) and len(table) == 2:
                 table_name, join_column = table
                 table_path = os.path.join(self.path, table_name + '.csv')
                 table_data = self.load_csv_as_dict(table_path)
 
                 result = [{**d1, **d2} for d1 in result for d2 in table_data if d1.get(join_column) == d2.get(join_column)]
+
+            elif isinstance(table, tuple) and len(table) == 4:
+                table1, column1, table2, column2 = table
+                table_path = os.path.join(self.path, table2 + '.csv')
+                table_data = self.load_csv_as_dict(table_path)
+
+                result = [{**d1, **d2} for d1 in result for d2 in table_data if d1.get(column1) == d2.get(column2)]
 
         return result
 
@@ -318,9 +355,10 @@ class QueryProcessor:
 
 
 if __name__ == "__main__":
-    query = "select course_id, title, dept_name from course join section using(course_id) where course_id = 'BIO-101' and credits >= 4"
+    # query = "select course_id, title, dept_name from course join section using(course_id) where course_id = 'BIO-101' and credits >= 4"
+    query = "select course_id, title, dept_name from course join section on(course.course_id=section.course_id) where course_id = 'BIO-101' and credits >= 4"
     print(query)
 
     aa = QueryProcessor()
-    aa.process('use dbbook')
+    aa.process('use postgres')
     aa.process(query=query)
