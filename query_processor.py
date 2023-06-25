@@ -1,7 +1,7 @@
 import os
 import csv
 import sys
-
+from tqdm import tqdm
 
 class QueryProcessor:
     reserved_keywords = ["select", "from", "join", "where", "order", "by", "on", "using", "create", "insert"]
@@ -257,12 +257,12 @@ class QueryProcessor:
 
                 # Hash join
                 index = {}
-                for row in result:
+                for row in tqdm(result, desc='Indexing Hash join'):
                     key_value = row[join_column]
                     index.setdefault(key_value, []).append(row)
 
                 new_result = []
-                for row in table_data:
+                for row in tqdm(table_data, desc='Joining tables'):
                     key_value = row[join_column]
                     if key_value in index:
                         for matching_row in index[key_value]:
@@ -278,12 +278,12 @@ class QueryProcessor:
 
                 # Hash join
                 index = {}
-                for row in result:
+                for row in tqdm(result, desc='Indexing Hash join'):
                     key_value = row[column1]
                     index.setdefault(key_value, []).append(row)
 
                 new_result = []
-                for row in table_data:
+                for row in tqdm(table_data, desc='Joining tables'):
                     key_value = row[column2]
                     if key_value in index:
                         for matching_row in index[key_value]:
@@ -398,8 +398,9 @@ class QueryProcessor:
 
         with open(path, 'r', newline='') as file:
             reader = csv.DictReader(file)
+            reader.line_num
 
-            for row in reader:
+            for row in tqdm(reader, desc='Loading Table'):
                 result.append(dict(row))
 
         return result
@@ -566,7 +567,7 @@ class QueryProcessor:
 if __name__ == "__main__":
     # query = "select course_id, title, dept_name from course join section using(course_id) where course_id = 'BIO-101' and credits >= 4"
     query = "select course_id, title, dept_name from course join section on(course.course_id=section.course_id) where course_id = 'BIO-101' and credits >= 4"
-    print(query)
+    query = "select * from employees join salaries using(emp_no) where to_date = '9999-01-01' and emp_no > 499900 order by emp_no"
 
     aa = QueryProcessor()
     aa.process('use postgres')
