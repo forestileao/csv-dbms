@@ -32,11 +32,19 @@ class QueryProcessor:
                     _, database = query.split(' ')
                     self.database = database
                     self.path = os.path.join(self.project_path, self.database)
+                elif query.strip() == 'show databases':
+                    print(os.listdir(self.project_path))
+                elif query.strip() == 'show tables' and self.database != '':
+                    tables = os.listdir(self.path)
+                    tables = list(map(lambda table: table.replace('.csv', ''), tables))
+                    print(tables)
                 elif self.database != '':
                     self.parse_query(query)
                 else:
                     print('[!] First, select a database! (use DATABASE_NAME)')
                     return
+
+
 
     def parse_query(self, query):
         original_query = query
