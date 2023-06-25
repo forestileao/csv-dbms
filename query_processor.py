@@ -73,8 +73,6 @@ class QueryProcessor:
         except Exception as e:
             print(f"Exception while processing query:\n{original_query}\n{e}")
 
-
-
     def get_insert_tokens(self, query: str):
         query = query.replace('insert into ', '')
         table_data, values = query.split('values')

@@ -2,6 +2,7 @@ import psycopg2
 import mysql.connector
 import os
 import csv
+import shutil
 
 
 class DataImporter:
@@ -43,12 +44,14 @@ class DataImporter:
                 password=os.getenv('MYSQL_PASSWORD')
             )
         elif self.database_type == "csv":
-            print("TODO: CSV selected")
+            pass
         else:
             raise ("Error connecting to database: NO DATABASE TYPE SET")
 
     def set_database(self, database: str) -> None:
-        self.db_client.close()
+        if self.database_type != "csv":
+            self.db_client.close()
+
         self.database = database
         if self.database_type == "postgres":
             self.db_client = psycopg2.connect(
@@ -66,8 +69,22 @@ class DataImporter:
                 password=os.getenv('MYSQL_PASSWORD'),
                 database=database
             )
-        else:
+        elif self.database_type != 'csv':
             raise("Error connecting to database: NO DATABASE TYPE SET")
+
+    def copy_files(self, source, output_dir):
+        if not os.path.isdir(source):
+            print("The source directory does not exist.")
+            return
+
+        destination = os.path.join(output_dir, self.database)
+        if not os.path.isdir(destination):
+            os.makedirs(destination)
+
+        for file_name in os.listdir(source):
+            source_path = os.path.join(source, file_name)
+            destination_path = os.path.join(destination, file_name)
+            shutil.copy2(source_path, destination_path)
 
     def get_tables(self) -> list:
         cursor = self.db_client.cursor()
