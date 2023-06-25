@@ -44,8 +44,6 @@ class QueryProcessor:
                     print('[!] First, select a database! (use DATABASE_NAME)')
                     return
 
-
-
     def parse_query(self, query):
         original_query = query
 
@@ -56,7 +54,7 @@ class QueryProcessor:
             tokens = self.get_update_tokens(query)
             operation_type = 'update'
         elif 'delete from' in query:
-            tokens = self.get_update_tokens(query)
+            tokens = self.get_delete_tokens(query)
             operation_type = 'delete'
         else :
             tokens = self.get_query_tokens(query)
@@ -67,6 +65,8 @@ class QueryProcessor:
                 self.handle_insert(tokens)
             elif operation_type == 'update':
                 self.handle_update(tokens)
+            elif operation_type == 'delete':
+                self.handle_delete(tokens)
             elif operation_type == 'query':
                 self.handle_query(tokens)
 
@@ -110,7 +110,17 @@ class QueryProcessor:
         return table.strip(), fields, filters
 
     def get_delete_tokens(self, query: str):
-        pass
+        query = query.replace('delete from', '').strip()
+
+        filters = None
+
+        if 'where' in query:
+            table, filters_str = query.split(' where ')
+            filters = self.get_query_tokens(filters_str)
+        else:
+            table = query
+
+        return table.strip(), filters
 
     def get_query_tokens(self, query):
         query_params = []
@@ -285,7 +295,7 @@ class QueryProcessor:
         with open(inserting_path, "a") as f:
             f.write(values_str)
 
-            print('Insert finished with success!')
+            print('Insert finished with success.')
 
     def handle_update(self, tokens):
         table, fields, filters = tokens
@@ -325,6 +335,34 @@ class QueryProcessor:
                 file_data[row_indexes[i] + 1] = updating_strings[i]
 
         with open(updating_path, 'w') as f:
+            f.write('\n'.join(file_data))
+
+        print('Fields updated with success.')
+
+    def handle_delete(self, tokens):
+        table, filters = tokens
+        loaded_data = self.load_tables([table])
+
+        if filters is not None:
+            deleting_data = self.apply_filters(loaded_data, filters)
+        else:
+            deleting_data = loaded_data
+
+        row_indexes = []
+
+        for data in deleting_data:
+            index = loaded_data.index(data)
+            if index != -1:
+                row_indexes.append(index + 1)
+
+        deleting_path = os.path.join(self.path, table + '.csv')
+
+        with open(deleting_path, "r") as f:
+            file_data = f.read().split('\n')
+
+            file_data = [i for j, i in enumerate(file_data) if j not in row_indexes]
+
+        with open(deleting_path, 'w') as f:
             f.write('\n'.join(file_data))
 
     def load_csv_as_dict(self, path):
