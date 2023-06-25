@@ -44,6 +44,12 @@ class QueryProcessor:
         if 'insert into' in query:
             tokens = self.get_insert_tokens(query)
             operation_type = 'insert'
+        elif 'update' in query:
+            tokens = self.get_update_tokens(query)
+            operation_type = 'update'
+        elif 'delete from' in query:
+            tokens = self.get_update_tokens(query)
+            operation_type = 'delete'
         else :
             tokens = self.get_query_tokens(query)
             operation_type = 'query'
@@ -51,6 +57,8 @@ class QueryProcessor:
         try:
             if operation_type == 'insert':
                 self.handle_insert(tokens)
+            elif operation_type == 'update':
+                self.handle_update(tokens)
             elif operation_type == 'query':
                 self.handle_query(tokens)
 
@@ -58,27 +66,6 @@ class QueryProcessor:
             print(f"Exception while processing query:\n{original_query}\n{e}")
 
 
-    def handle_query(self, query_tokens):
-        tables = self.get_tables(query_tokens)
-        ordination = self.ordination(query_tokens)
-        filters = self.get_filters(query_tokens)
-        columns = self.select_columns(query_tokens)
-
-        loaded_dada = self.load_tables(tables)
-
-        if filters is not None:
-            loaded_dada = self.apply_filters(loaded_dada, filters)
-
-        if ordination is not None:
-            loaded_dada = self.order_by(loaded_dada, ordination)
-
-        if columns is not None:
-            loaded_dada = self.select(loaded_dada, columns)
-
-        if len(loaded_dada) != 0:
-            self.print_csv_from_dict_list(loaded_dada)
-        else:
-            print('No data!')
 
     def get_insert_tokens(self, query: str):
         query = query.replace('insert into ', '')
@@ -98,6 +85,24 @@ class QueryProcessor:
 
         rows_string = '\n'.join(new_rows) + '\n'
         return table, rows_string
+
+    def get_update_tokens(self, query: str):
+        query = query.replace('update', '').strip()
+
+        table, update_str = query.split(' set ')
+        filters = None
+
+        if 'where' in update_str:
+            update_str, filters_str = update_str.split(' where ')
+
+            filters = self.get_query_tokens(filters_str)
+
+        fields = self.get_query_tokens(update_str)
+
+        return table.strip(), fields, filters
+
+    def get_delete_tokens(self, query: str):
+        pass
 
     def get_query_tokens(self, query):
         query_params = []
@@ -243,6 +248,28 @@ class QueryProcessor:
 
         return result
 
+    def handle_query(self, query_tokens):
+        tables = self.get_tables(query_tokens)
+        ordination = self.ordination(query_tokens)
+        filters = self.get_filters(query_tokens)
+        columns = self.select_columns(query_tokens)
+
+        loaded_dada = self.load_tables(tables)
+
+        if filters is not None:
+            loaded_dada = self.apply_filters(loaded_dada, filters)
+
+        if ordination is not None:
+            loaded_dada = self.order_by(loaded_dada, ordination)
+
+        if columns is not None:
+            loaded_dada = self.select(loaded_dada, columns)
+
+        if len(loaded_dada) != 0:
+            self.print_csv_from_dict_list(loaded_dada)
+        else:
+            print('No data!')
+
     def handle_insert(self, tokens):
         table, values_str = tokens
 
@@ -251,6 +278,46 @@ class QueryProcessor:
             f.write(values_str)
 
             print('Insert finished with success!')
+
+    def handle_update(self, tokens):
+        table, fields, filters = tokens
+
+        loaded_data = self.load_tables([table])
+
+        if filters is not None:
+            updating_data = self.apply_filters(loaded_data, filters)
+        else:
+            updating_data = loaded_data
+
+        row_indexes = []
+
+        for data in updating_data:
+            index = loaded_data.index(data)
+            if index != -1:
+                row_indexes.append(index)
+
+        for field, _, value in self.chunks(fields, 3):
+            for data in updating_data:
+                data[field] = value.replace("'", "")
+
+        updating_path = os.path.join(self.path, table + '.csv')
+
+        with open(updating_path, "r") as f:
+            file_data = f.read().split('\n')
+            headers = file_data[0].split(',')
+
+            updating_strings = []
+            for data in updating_data:
+                row = []
+                for header in headers:
+                    row.append(data[header])
+                updating_strings.append(','.join(row))
+
+            for i in range(len(updating_strings)):
+                file_data[row_indexes[i] + 1] = updating_strings[i]
+
+        with open(updating_path, 'w') as f:
+            f.write('\n'.join(file_data))
 
     def load_csv_as_dict(self, path):
         result = []
@@ -307,8 +374,11 @@ class QueryProcessor:
         def is_and_valid(row):
             and_valid = True
             for field, operator, value in and_predicates:
-                value = int(value) if value.isnumeric() else value.replace("'", "")
-                row[field] = int(row[field]) if row[field].isnumeric() else row[field]
+                value = value.replace("'", "")
+                if operator in ['>=', '<=', '<', '>']:
+                    value = float(value)
+                    row[field] = float(row[field])
+
                 if operator == '=':
                     if row[field] != value:
                         and_valid = False
@@ -343,8 +413,11 @@ class QueryProcessor:
         def is_or_valid(row):
             or_valid = False
             for field, operator, value in or_predicates:
-                value = int(value) if value.isnumeric() else value.replace("'", "")
-                row[field] = int(row[field]) if row[field].isnumeric() else row[field]
+                value = value.replace("'", "")
+                if operator in ['>=', '<=', '<', '>']:
+                    value = float(value)
+                    row[field] = float(row[field])
+
                 if operator == '=':
                     if row[field] == value:
                         or_valid = True
@@ -398,6 +471,10 @@ class QueryProcessor:
             result.append(sublist)
 
         return result
+
+    def chunks(self, lst, n):
+        for i in range(0, len(lst), n):
+            yield lst[i:i + n]
 
 
 if __name__ == "__main__":
