@@ -232,11 +232,11 @@ class QueryProcessor:
                 return None
 
             while tokens[index] != "from":
-                field = tokens[index].replace(',', '')
-                columns.append(field)
+                fields = tokens[index].split(',')
+                columns.append(fields)
                 index += 1
 
-        return columns
+        return self.flatten_list(columns)
 
     def load_tables(self, tables):
         result = []
@@ -255,14 +255,42 @@ class QueryProcessor:
                 table_path = os.path.join(self.path, table_name + '.csv')
                 table_data = self.load_csv_as_dict(table_path)
 
-                result = [{**d1, **d2} for d1 in result for d2 in table_data if d1.get(join_column) == d2.get(join_column)]
+                # Hash join
+                index = {}
+                for row in result:
+                    key_value = row[join_column]
+                    index.setdefault(key_value, []).append(row)
+
+                new_result = []
+                for row in table_data:
+                    key_value = row[join_column]
+                    if key_value in index:
+                        for matching_row in index[key_value]:
+                            joined_row = {**row, **matching_row}
+                            new_result.append(joined_row)
+
+                result = new_result
 
             elif isinstance(table, tuple) and len(table) == 4:
                 table1, column1, table2, column2 = table
                 table_path = os.path.join(self.path, table2 + '.csv')
                 table_data = self.load_csv_as_dict(table_path)
 
-                result = [{**d1, **d2} for d1 in result for d2 in table_data if d1.get(column1) == d2.get(column2)]
+                # Hash join
+                index = {}
+                for row in result:
+                    key_value = row[column1]
+                    index.setdefault(key_value, []).append(row)
+
+                new_result = []
+                for row in table_data:
+                    key_value = row[column2]
+                    if key_value in index:
+                        for matching_row in index[key_value]:
+                            joined_row = {**row, **matching_row}
+                            new_result.append(joined_row)
+
+                result = new_result
 
         return result
 
@@ -421,32 +449,33 @@ class QueryProcessor:
             and_valid = True
             for field, operator, value in and_predicates:
                 value = value.replace("'", "")
+                row_field = row[field]
                 if operator in ['>=', '<=', '<', '>']:
                     value = float(value)
-                    row[field] = float(row[field])
+                    row_field = float(row[field])
 
                 if operator == '=':
-                    if row[field] != value:
+                    if row_field != value:
                         and_valid = False
                         break
                 elif operator == '!=':
-                    if row[field] == value:
+                    if row_field == value:
                         and_valid = False
                         break
                 elif operator == '>=':
-                    if row[field] < value:
+                    if row_field < value:
                         and_valid = False
                         break
                 elif operator == '<=':
-                    if row[field] > value:
+                    if row_field > value:
                         and_valid = False
                         break
                 elif operator == '>':
-                    if row[field] <= value:
+                    if row_field <= value:
                         and_valid = False
                         break
                 elif operator == '<':
-                    if row[field] >= value:
+                    if row_field >= value:
                         and_valid = False
                         break
             if and_valid:
@@ -460,32 +489,33 @@ class QueryProcessor:
             or_valid = False
             for field, operator, value in or_predicates:
                 value = value.replace("'", "")
+                row_field = row[field]
                 if operator in ['>=', '<=', '<', '>']:
                     value = float(value)
-                    row[field] = float(row[field])
+                    row_field = float(row[field])
 
                 if operator == '=':
-                    if row[field] == value:
+                    if row_field == value:
                         or_valid = True
                         break
                 elif operator == '!=':
-                    if row[field] != value:
+                    if row_field != value:
                         or_valid = True
                         break
                 elif operator == '>=':
-                    if row[field] >= value:
+                    if row_field >= value:
                         or_valid = True
                         break
                 elif operator == '<=':
-                    if row[field] <= value:
+                    if row_field <= value:
                         or_valid = True
                         break
                 elif operator == '>':
-                    if row[field] > value:
+                    if row_field > value:
                         or_valid = True
                         break
                 elif operator == '<':
-                    if row[field] < value:
+                    if row_field < value:
                         or_valid = True
                         break
             if or_valid:
@@ -521,6 +551,16 @@ class QueryProcessor:
     def chunks(self, lst, n):
         for i in range(0, len(lst), n):
             yield lst[i:i + n]
+
+    def flatten_list(self, _2d_list):
+        flat_list = []
+        for element in _2d_list:
+            if type(element) is list:
+                for item in element:
+                    flat_list.append(item)
+            else:
+                flat_list.append(element)
+        return flat_list
 
 
 if __name__ == "__main__":
